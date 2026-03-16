@@ -7,6 +7,7 @@ Focus areas:
 3. Sources from the search tool are returned and then cleared
 4. Session management is wired correctly
 """
+
 import pytest
 from unittest.mock import MagicMock, patch, PropertyMock
 
@@ -49,10 +50,12 @@ def _make_rag_system():
     config.ANTHROPIC_API_KEY = "fake-key"
     config.ANTHROPIC_MODEL = "claude-test"
 
-    with patch("rag_system.VectorStore") as MockVectorStore, \
-         patch("rag_system.DocumentProcessor"), \
-         patch("rag_system.AIGenerator") as MockAIGenerator, \
-         patch("rag_system.SessionManager"):
+    with (
+        patch("rag_system.VectorStore") as MockVectorStore,
+        patch("rag_system.DocumentProcessor"),
+        patch("rag_system.AIGenerator") as MockAIGenerator,
+        patch("rag_system.SessionManager"),
+    ):
 
         rag = RAGSystem(config)
 
@@ -64,6 +67,7 @@ def _make_rag_system():
 
 
 # ─── Tool wiring ──────────────────────────────────────────────────────────────
+
 
 class TestRAGSystemToolWiring:
 
@@ -104,6 +108,7 @@ class TestRAGSystemToolWiring:
 
 # ─── Content-query response quality ───────────────────────────────────────────
 
+
 class TestRAGContentQueryResponse:
 
     def test_content_query_does_not_return_failure_phrase(self):
@@ -118,9 +123,9 @@ class TestRAGContentQueryResponse:
 
         answer, sources = rag.query("What does lesson 3 cover?")
 
-        assert not _contains_failure_phrase(answer), (
-            f"query() returned a failure phrase: '{answer}'"
-        )
+        assert not _contains_failure_phrase(
+            answer
+        ), f"query() returned a failure phrase: '{answer}'"
 
     def test_query_returns_ai_generator_output_verbatim(self):
         """The answer returned by query() must be the exact text from generate_response."""
@@ -174,6 +179,7 @@ class TestRAGContentQueryResponse:
 
 # ─── Session management ────────────────────────────────────────────────────────
 
+
 class TestRAGSessionManagement:
 
     def test_session_history_passed_to_generate_response_when_session_given(self):
@@ -182,7 +188,9 @@ class TestRAGSessionManagement:
         rag._mock_ai_generator.generate_response.return_value = "answer"
 
         # Seed history in session manager
-        rag.session_manager.get_conversation_history.return_value = "User: hi\nAssistant: hello"
+        rag.session_manager.get_conversation_history.return_value = (
+            "User: hi\nAssistant: hello"
+        )
 
         rag.query("follow-up question", session_id="session_1")
 
@@ -206,4 +214,6 @@ class TestRAGSessionManagement:
 
         rag.query("My question", session_id="s1")
 
-        rag.session_manager.add_exchange.assert_called_once_with("s1", "My question", "My answer")
+        rag.session_manager.add_exchange.assert_called_once_with(
+            "s1", "My question", "My answer"
+        )

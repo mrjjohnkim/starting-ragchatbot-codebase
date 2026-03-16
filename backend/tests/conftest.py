@@ -2,6 +2,7 @@
 Shared test configuration and fixtures.
 Adds the backend directory to sys.path so all backend modules are importable.
 """
+
 import sys
 import os
 import pytest
@@ -16,6 +17,7 @@ for _dir in (BACKEND_DIR, TESTS_DIR):
 
 
 # ─── Fixtures ─────────────────────────────────────────────────────────────────
+
 
 @pytest.fixture
 def mock_vector_store():

@@ -7,6 +7,7 @@ Focus areas:
 3. Result formatting (source tracking, lesson links, headers)
 4. ToolManager routing and source management
 """
+
 import pytest
 from unittest.mock import MagicMock, patch
 
@@ -16,6 +17,7 @@ from vector_store import SearchResults
 
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
+
 
 def _make_search_results(docs, metas, distances=None):
     """Build a SearchResults with the given documents and metadata lists."""
@@ -29,6 +31,7 @@ def _make_error_results(msg):
 
 
 # ─── CourseSearchTool.execute() ───────────────────────────────────────────────
+
 
 class TestCourseSearchToolExecute:
 
@@ -89,8 +92,10 @@ class TestCourseSearchToolExecute:
 
         mock_vector_store.search.assert_called_once()
         call_kwargs = mock_vector_store.search.call_args
-        assert call_kwargs.kwargs.get("query") == "backpropagation" or \
-               call_kwargs.args[0] == "backpropagation"
+        assert (
+            call_kwargs.kwargs.get("query") == "backpropagation"
+            or call_kwargs.args[0] == "backpropagation"
+        )
 
     def test_passes_course_name_to_store_search(self, mock_vector_store):
         """execute() must pass course_name through to VectorStore.search()."""
@@ -156,7 +161,9 @@ class TestCourseSearchToolExecute:
 
     def test_last_sources_empty_on_error(self, mock_vector_store):
         """An error result must not populate last_sources with stale data."""
-        mock_vector_store.search.return_value = _make_error_results("Search error: boom")
+        mock_vector_store.search.return_value = _make_error_results(
+            "Search error: boom"
+        )
         tool = CourseSearchTool(mock_vector_store)
         tool.execute(query="test")
 
@@ -179,12 +186,14 @@ class TestCourseSearchToolExecute:
 
 # ─── ToolManager ──────────────────────────────────────────────────────────────
 
+
 class TestToolManager:
 
     def test_register_and_execute_search_tool(self, mock_vector_store):
         """ToolManager should route 'search_course_content' to CourseSearchTool."""
         mock_vector_store.search.return_value = _make_search_results(
-            docs=["Result text"], metas=[{"course_title": "TestCourse", "lesson_number": 1}]
+            docs=["Result text"],
+            metas=[{"course_title": "TestCourse", "lesson_number": 1}],
         )
         manager = ToolManager()
         manager.register_tool(CourseSearchTool(mock_vector_store))

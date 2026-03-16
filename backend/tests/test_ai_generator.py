@@ -9,6 +9,7 @@ Focus areas:
 4. The final text response is returned (not a tool block)
 5. Direct (non-tool) responses are returned immediately
 """
+
 import pytest
 from unittest.mock import MagicMock, patch, call
 
@@ -19,6 +20,7 @@ from helpers import make_tool_use_response, make_text_response
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 
+
 def _make_generator(mock_client):
     """Return an AIGenerator whose internal Anthropic client is replaced."""
     with patch("ai_generator.anthropic.Anthropic", return_value=mock_client):
@@ -27,6 +29,7 @@ def _make_generator(mock_client):
 
 
 # ─── Direct response (no tool use) ────────────────────────────────────────────
+
 
 class TestDirectResponse:
 
@@ -62,6 +65,7 @@ class TestDirectResponse:
 
 # ─── Tools are forwarded to the API ───────────────────────────────────────────
 
+
 class TestToolForwarding:
 
     def test_tools_included_in_api_call_when_provided(self, mock_anthropic_client):
@@ -69,7 +73,9 @@ class TestToolForwarding:
         mock_anthropic_client.messages.create.return_value = make_text_response("ok")
         gen = _make_generator(mock_anthropic_client)
 
-        fake_tools = [{"name": "search_course_content", "description": "...", "input_schema": {}}]
+        fake_tools = [
+            {"name": "search_course_content", "description": "...", "input_schema": {}}
+        ]
         gen.generate_response(query="test", tools=fake_tools)
 
         call_kwargs = mock_anthropic_client.messages.create.call_args.kwargs
@@ -98,16 +104,28 @@ class TestToolForwarding:
 
 # ─── Tool execution flow ───────────────────────────────────────────────────────
 
+
 class TestToolExecution:
 
-    def _setup_tool_call(self, mock_anthropic_client, tool_name, tool_input,
-                         tool_result_text, final_answer):
+    def _setup_tool_call(
+        self,
+        mock_anthropic_client,
+        tool_name,
+        tool_input,
+        tool_result_text,
+        final_answer,
+    ):
         """Wire the mock client to return a tool_use then a text response."""
         tool_response = make_tool_use_response(tool_name, tool_input, tool_id="tu_001")
         text_response = make_text_response(final_answer)
-        mock_anthropic_client.messages.create.side_effect = [tool_response, text_response]
+        mock_anthropic_client.messages.create.side_effect = [
+            tool_response,
+            text_response,
+        ]
 
-    def test_execute_tool_is_called_when_stop_reason_is_tool_use(self, mock_anthropic_client):
+    def test_execute_tool_is_called_when_stop_reason_is_tool_use(
+        self, mock_anthropic_client
+    ):
         """When Claude returns stop_reason='tool_use', execute_tool must be called."""
         self._setup_tool_call(
             mock_anthropic_client,
@@ -165,7 +183,9 @@ class TestToolExecution:
         tool_manager.execute_tool.return_value = "result"
 
         gen.generate_response(
-            query="q", tools=[{"name": "search_course_content"}], tool_manager=tool_manager
+            query="q",
+            tools=[{"name": "search_course_content"}],
+            tool_manager=tool_manager,
         )
 
         assert mock_anthropic_client.messages.create.call_count == 2
@@ -188,7 +208,9 @@ class TestToolExecution:
         )
 
         # Second call is the follow-up
-        second_call_kwargs = mock_anthropic_client.messages.create.call_args_list[1].kwargs
+        second_call_kwargs = mock_anthropic_client.messages.create.call_args_list[
+            1
+        ].kwargs
         messages = second_call_kwargs["messages"]
 
         # Last message must be the user message with tool results
@@ -219,10 +241,14 @@ class TestToolExecution:
             query="test", tools=[{"name": "x"}], tool_manager=tool_manager
         )
 
-        second_call_kwargs = mock_anthropic_client.messages.create.call_args_list[1].kwargs
+        second_call_kwargs = mock_anthropic_client.messages.create.call_args_list[
+            1
+        ].kwargs
         assert "tools" not in second_call_kwargs
 
-    def test_generate_response_without_tool_manager_ignores_tool_use(self, mock_anthropic_client):
+    def test_generate_response_without_tool_manager_ignores_tool_use(
+        self, mock_anthropic_client
+    ):
         """
         If stop_reason is 'tool_use' but no tool_manager is given,
         generate_response() should fall through to content[0].text.
@@ -238,20 +264,27 @@ class TestToolExecution:
         gen = _make_generator(mock_anthropic_client)
 
         # With no tool_manager the code takes the else branch
-        result = gen.generate_response(query="test", tools=[{"name": "t"}], tool_manager=None)
+        result = gen.generate_response(
+            query="test", tools=[{"name": "t"}], tool_manager=None
+        )
         # Should return content[0].text — even if the block is a ToolUseBlock
         assert result == "fallback text"
 
 
 # ─── Conversation history ──────────────────────────────────────────────────────
 
+
 class TestConversationHistory:
 
-    def test_history_appended_to_system_prompt_when_provided(self, mock_anthropic_client):
+    def test_history_appended_to_system_prompt_when_provided(
+        self, mock_anthropic_client
+    ):
         """Conversation history should be appended to the system content."""
         mock_anthropic_client.messages.create.return_value = make_text_response("ok")
         gen = _make_generator(mock_anthropic_client)
-        gen.generate_response(query="follow-up", conversation_history="User: hi\nAssistant: hello")
+        gen.generate_response(
+            query="follow-up", conversation_history="User: hi\nAssistant: hello"
+        )
 
         call_kwargs = mock_anthropic_client.messages.create.call_args.kwargs
         assert "Previous conversation" in call_kwargs["system"]

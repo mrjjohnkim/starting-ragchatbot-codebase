@@ -2,10 +2,13 @@
 Shared test helpers: mock Anthropic response builders.
 Importable from any test file.
 """
+
 from unittest.mock import MagicMock
 
 
-def make_tool_use_response(tool_name: str, tool_input: dict, tool_id: str = "tu_abc123"):
+def make_tool_use_response(
+    tool_name: str, tool_input: dict, tool_id: str = "tu_abc123"
+):
     """Build a mock Anthropic response with stop_reason='tool_use'."""
     tool_block = MagicMock()
     tool_block.type = "tool_use"
