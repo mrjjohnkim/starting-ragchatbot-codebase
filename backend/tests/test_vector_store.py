@@ -8,6 +8,7 @@ ChromaDB 1.0.x compatibility issues, particularly:
 - Filter construction for all parameter combinations
 - Course name resolution via semantic search
 """
+
 import sys
 import os
 import pytest
@@ -20,6 +21,7 @@ from models import Course, Lesson, CourseChunk
 
 
 # ─── In-memory VectorStore fixture ────────────────────────────────────────────
+
 
 class InMemoryVectorStore(VectorStore):
     """
@@ -43,7 +45,9 @@ class InMemoryVectorStore(VectorStore):
 
             def __call__(self, input):
                 # Return a deterministic 4-dim embedding per document
-                return [[float(hash(doc) % 100) / 100.0, 0.1, 0.2, 0.3] for doc in input]
+                return [
+                    [float(hash(doc) % 100) / 100.0, 0.1, 0.2, 0.3] for doc in input
+                ]
 
         self.embedding_function = DummyEF()
         self.course_catalog = self._create_collection("course_catalog")
@@ -64,16 +68,39 @@ def store_with_data(store):
         course_link="https://example.com/ml",
         instructor="Dr. Smith",
         lessons=[
-            Lesson(lesson_number=1, title="What is ML?", lesson_link="https://ex.com/ml/1"),
-            Lesson(lesson_number=2, title="Supervised Learning", lesson_link="https://ex.com/ml/2"),
+            Lesson(
+                lesson_number=1, title="What is ML?", lesson_link="https://ex.com/ml/1"
+            ),
+            Lesson(
+                lesson_number=2,
+                title="Supervised Learning",
+                lesson_link="https://ex.com/ml/2",
+            ),
         ],
     )
     store.add_course_metadata(course1)
-    store.add_course_content([
-        CourseChunk(content="Machine learning is a subset of AI.", course_title="Introduction to Machine Learning", lesson_number=1, chunk_index=0),
-        CourseChunk(content="Supervised learning uses labeled data.", course_title="Introduction to Machine Learning", lesson_number=2, chunk_index=1),
-        CourseChunk(content="Deep learning uses neural networks.", course_title="Introduction to Machine Learning", lesson_number=2, chunk_index=2),
-    ])
+    store.add_course_content(
+        [
+            CourseChunk(
+                content="Machine learning is a subset of AI.",
+                course_title="Introduction to Machine Learning",
+                lesson_number=1,
+                chunk_index=0,
+            ),
+            CourseChunk(
+                content="Supervised learning uses labeled data.",
+                course_title="Introduction to Machine Learning",
+                lesson_number=2,
+                chunk_index=1,
+            ),
+            CourseChunk(
+                content="Deep learning uses neural networks.",
+                course_title="Introduction to Machine Learning",
+                lesson_number=2,
+                chunk_index=2,
+            ),
+        ]
+    )
 
     # Course 2
     course2 = Course(
@@ -81,18 +108,28 @@ def store_with_data(store):
         course_link="https://example.com/python",
         instructor="Prof. Jones",
         lessons=[
-            Lesson(lesson_number=1, title="Variables", lesson_link="https://ex.com/py/1"),
+            Lesson(
+                lesson_number=1, title="Variables", lesson_link="https://ex.com/py/1"
+            ),
         ],
     )
     store.add_course_metadata(course2)
-    store.add_course_content([
-        CourseChunk(content="Python is a high-level language.", course_title="Python Programming Basics", lesson_number=1, chunk_index=3),
-    ])
+    store.add_course_content(
+        [
+            CourseChunk(
+                content="Python is a high-level language.",
+                course_title="Python Programming Basics",
+                lesson_number=1,
+                chunk_index=3,
+            ),
+        ]
+    )
 
     return store
 
 
 # ─── _build_filter ─────────────────────────────────────────────────────────────
+
 
 class TestBuildFilter:
 
@@ -122,6 +159,7 @@ class TestBuildFilter:
 
 # ─── search() with empty collection ───────────────────────────────────────────
 
+
 class TestSearchEmptyCollection:
 
     def test_empty_collection_does_not_raise(self, store):
@@ -129,9 +167,7 @@ class TestSearchEmptyCollection:
         try:
             result = store.search(query="anything")
         except Exception as exc:
-            pytest.fail(
-                f"search() raised an exception on an empty collection: {exc}"
-            )
+            pytest.fail(f"search() raised an exception on an empty collection: {exc}")
 
     def test_empty_collection_returns_search_results_instance(self, store):
         result = store.search(query="anything")
@@ -148,6 +184,7 @@ class TestSearchEmptyCollection:
 
 # ─── search() with fewer docs than n_results ──────────────────────────────────
 
+
 class TestSearchFewerDocsThanNResults:
 
     def test_returns_available_docs_when_fewer_than_n_results(self, store):
@@ -157,10 +194,22 @@ class TestSearchFewerDocsThanNResults:
         This test detects the 'Collection has N elements, but M were requested' bug.
         """
         # Add only 2 documents but store has n_results=5
-        store.add_course_content([
-            CourseChunk(content="Doc one content.", course_title="Test", lesson_number=1, chunk_index=0),
-            CourseChunk(content="Doc two content.", course_title="Test", lesson_number=2, chunk_index=1),
-        ])
+        store.add_course_content(
+            [
+                CourseChunk(
+                    content="Doc one content.",
+                    course_title="Test",
+                    lesson_number=1,
+                    chunk_index=0,
+                ),
+                CourseChunk(
+                    content="Doc two content.",
+                    course_title="Test",
+                    lesson_number=2,
+                    chunk_index=1,
+                ),
+            ]
+        )
 
         result = store.search(query="content")
 
@@ -184,36 +233,42 @@ class TestSearchFewerDocsThanNResults:
 
 # ─── search() with filters ────────────────────────────────────────────────────
 
+
 class TestSearchWithFilters:
 
     def test_search_without_filters_returns_results(self, store_with_data):
         """A basic query with no filters should return at least one result."""
         result = store_with_data.search(query="machine learning")
         assert not result.error, f"Unexpected error: {result.error}"
-        assert not result.is_empty(), "Expected at least one result for 'machine learning'"
+        assert (
+            not result.is_empty()
+        ), "Expected at least one result for 'machine learning'"
 
     def test_search_with_valid_course_name_returns_results(self, store_with_data):
         """search() with a known course name should return results from that course."""
         result = store_with_data.search(
-            query="supervised learning",
-            course_name="Introduction to Machine Learning"
+            query="supervised learning", course_name="Introduction to Machine Learning"
         )
         assert not result.error, f"Unexpected error: {result.error}"
         # All results should belong to the requested course
         for meta in result.metadata:
             assert meta["course_title"] == "Introduction to Machine Learning"
 
-    def test_search_with_unknown_course_name_returns_error(self, store_with_data, monkeypatch):
+    def test_search_with_unknown_course_name_returns_error(
+        self, store_with_data, monkeypatch
+    ):
         """
         search() with a course name that can't be resolved must return an error SearchResults.
         We monkeypatch _resolve_course_name to guarantee it returns None (the threshold-exceeded
         path) — isolating this path from the DummyEF's non-semantic similarity scores.
         """
         monkeypatch.setattr(store_with_data, "_resolve_course_name", lambda name: None)
-        result = store_with_data.search(query="anything", course_name="Definitely Not A Course")
-        assert result.error is not None, (
-            f"Expected an error SearchResults when course is unresolvable, got: {result}"
+        result = store_with_data.search(
+            query="anything", course_name="Definitely Not A Course"
         )
+        assert (
+            result.error is not None
+        ), f"Expected an error SearchResults when course is unresolvable, got: {result}"
         assert "No course found" in result.error
 
     def test_search_with_lesson_number_filter(self, store_with_data):
@@ -221,13 +276,13 @@ class TestSearchWithFilters:
         result = store_with_data.search(
             query="learning",
             course_name="Introduction to Machine Learning",
-            lesson_number=1
+            lesson_number=1,
         )
         if not result.error and not result.is_empty():
             for meta in result.metadata:
-                assert meta["lesson_number"] == 1, (
-                    f"Expected lesson 1 only, got {meta['lesson_number']}"
-                )
+                assert (
+                    meta["lesson_number"] == 1
+                ), f"Expected lesson 1 only, got {meta['lesson_number']}"
 
     def test_search_with_and_filter_course_and_lesson(self, store_with_data):
         """
@@ -238,7 +293,7 @@ class TestSearchWithFilters:
             result = store_with_data.search(
                 query="supervised",
                 course_name="Introduction to Machine Learning",
-                lesson_number=2
+                lesson_number=2,
             )
         except Exception as exc:
             pytest.fail(
@@ -248,6 +303,7 @@ class TestSearchWithFilters:
 
 
 # ─── Course resolution ─────────────────────────────────────────────────────────
+
 
 class TestCourseResolution:
 
@@ -270,9 +326,7 @@ class TestCourseResolution:
         }
         title = store_with_data._resolve_course_name("Machine Learning")
         # It may return either title (DummyEF is non-semantic), but must return one of them
-        assert title in known_titles, (
-            f"Expected one of {known_titles}, got {title!r}"
-        )
+        assert title in known_titles, f"Expected one of {known_titles}, got {title!r}"
 
     def test_resolve_returns_none_for_completely_unknown_course(self, store_with_data):
         """_resolve_course_name() on a totally unrelated string should return None."""
@@ -285,6 +339,7 @@ class TestCourseResolution:
 
 
 # ─── Lesson link retrieval ─────────────────────────────────────────────────────
+
 
 class TestLessonLinkRetrieval:
 
